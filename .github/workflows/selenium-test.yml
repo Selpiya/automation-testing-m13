@@ -1,68 +1,12 @@
 name: Selenium Automation Testing
 
-# Menentukan kapan workflow dijalankan
 on:
   push:
     branches:
       - main
 
+  pull_request:
+    branches:
+      - main
+
   workflow_dispatch:
-
-
-jobs:
-  automation-testing:
-
-    # Menggunakan sistem operasi Ubuntu
-    runs-on: ubuntu-latest
-
-    # Konfigurasi environment
-    env:
-      BASE_URL: ${{ secrets.BASE_URL }}
-      TEST_USER: ${{ secrets.TEST_USER }}
-      TEST_PASS: ${{ secrets.TEST_PASS }}
-      BROWSER: chrome
-      HEADLESS: "true"
-
-    steps:
-
-      # 1. Mengambil kode dari repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-
-      # 2. Menyiapkan Python
-      - name: Set Up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: "pip"
-
-
-      # 3. Memeriksa konfigurasi
-      - name: Check Environment
-        run: |
-          python -c "import os; required=['BASE_URL','TEST_USER','TEST_PASS']; missing=[v for v in required if not os.getenv(v)]; print('Environment check:', 'PASS' if not missing else 'FAIL'); print('Missing variables:', missing); exit(bool(missing))"
-
-
-      # 4. Menginstal dependencies
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-
-      # 5. Menjalankan Selenium Automation Testing
-      - name: Run Selenium Tests
-        run: |
-          python -m pytest -v -s tests/test_login.py
-
-
-      # 6. Menyimpan screenshot hasil pengujian
-      - name: Upload Test Screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selenium-test-screenshot
-          path: screenshots/
-          if-no-files-found: warn
-          retention-days: 7
