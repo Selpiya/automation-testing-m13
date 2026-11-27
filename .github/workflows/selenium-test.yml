@@ -1,5 +1,6 @@
 name: Selenium Automation Testing
 
+# Trigger workflow
 on:
   push:
     branches:
@@ -10,3 +11,54 @@ on:
       - main
 
   workflow_dispatch:
+
+jobs:
+  automation-testing:
+
+    runs-on: ubuntu-latest
+
+    env:
+      BASE_URL: ${{ secrets.BASE_URL }}
+      TEST_USER: ${{ secrets.TEST_USER }}
+      TEST_PASS: ${{ secrets.TEST_PASS }}
+      BROWSER: chrome
+      HEADLESS: "true"
+
+    steps:
+
+      # 1. Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Python
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      # 3. Check environment
+      - name: Check Environment
+        run: |
+          python -c "import os; required=['BASE_URL','TEST_USER','TEST_PASS']; missing=[v for v in required if not os.getenv(v)]; print('Environment check:', 'PASS' if not missing else 'FAIL'); print('Missing variables:', missing); exit(bool(missing))"
+
+      # 4. Install dependencies
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Run Selenium tests
+      - name: Run Selenium Tests
+        run: |
+          python -m pytest -v -s tests/test_login.py
+
+      # 6. Upload screenshot
+      - name: Upload Test Screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-test-screenshot
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 7
