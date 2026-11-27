@@ -5,6 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 from pages.login_page import LoginPage
 
@@ -48,6 +49,8 @@ def driver():
         if HEADLESS:
             options.add_argument("-headless")
 
+        options.add_argument("--width=1920")
+        options.add_argument("--height=1080")
         browser = webdriver.Firefox(options=options)
 
     else:
@@ -55,12 +58,18 @@ def driver():
 
     yield browser
 
-    # Menutup browser setelah pengujian
     browser.quit()
 
 
 # 2. Test case login valid
 def test_login_valid(driver):
+
+    # Membuat folder screenshot
+    screenshot_dir = (
+        Path(__file__).resolve().parents[1] / "screenshots"
+    )
+
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
 
     # Membuka halaman login
     driver.get(f"{BASE_URL}/login")
@@ -68,20 +77,55 @@ def test_login_valid(driver):
     # Membuat objek LoginPage
     login_page = LoginPage(driver)
 
-    # Melakukan login menggunakan konfigurasi environment
+    # Melakukan login
     login_page.login(TEST_USER, TEST_PASS)
 
-    # Menunggu URL mengandung dashboard
-    WebDriverWait(driver, 10).until(
-        EC.url_contains("/dashboard")
-    )
+    # Menunggu login berhasil atau gagal
+    try:
 
-    # Memverifikasi keberhasilan login
+        WebDriverWait(driver, 15).until(
+            lambda d: (
+                "/dashboard" in d.current_url
+                or "Login Gagal!" in d.page_source
+            )
+        )
+
+    except TimeoutException:
+
+        # Screenshot jika proses login timeout
+        driver.save_screenshot(
+            str(screenshot_dir / "hasil_login_debug.png")
+        )
+
+        body_text = driver.find_element(
+            By.TAG_NAME, "body"
+        ).text
+
+        pytest.fail(
+            f"Login timeout!\n"
+            f"URL: {driver.current_url}\n"
+            f"Isi halaman: {body_text}"
+        )
+
+    # Memeriksa jika login ditolak
+    if "Login Gagal!" in driver.page_source:
+
+        driver.save_screenshot(
+            str(screenshot_dir / "hasil_login_debug.png")
+        )
+
+        pytest.fail(
+            "Login ditolak oleh aplikasi. "
+            "Periksa kecocokan GitHub Secrets "
+            "dengan kredensial aplikasi PythonAnywhere."
+        )
+
+    # Memverifikasi URL Dashboard
     assert "/dashboard" in driver.current_url, (
         "Login gagal: URL tidak mengandung dashboard"
     )
 
-    # Memverifikasi konten halaman Dashboard
+    # Memverifikasi judul Dashboard
     dashboard_title = WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located(
             (By.TAG_NAME, "h1")
@@ -92,13 +136,6 @@ def test_login_valid(driver):
         "Dashboard gagal dimuat atau judul tidak sesuai"
     )
 
-    # Membuat folder screenshots jika belum tersedia
-    screenshot_dir = (
-        Path(__file__).resolve().parents[1] / "screenshots"
-    )
-
-    screenshot_dir.mkdir(parents=True, exist_ok=True)
-
     # Menyimpan screenshot hasil pengujian
     screenshot_path = screenshot_dir / "hasil_login_pom.png"
 
@@ -106,7 +143,6 @@ def test_login_valid(driver):
         "Screenshot gagal disimpan"
     )
 
-    # Menampilkan informasi hasil pengujian
     print("\n====================================")
     print("HASIL PENGUJIAN AUTOMATION TESTING")
     print("====================================")

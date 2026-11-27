@@ -63,6 +63,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: selenium-test-screenshot
-          path: screenshots/hasil_login_pom.png
+          path: screenshots/
           if-no-files-found: warn
           retention-days: 7
