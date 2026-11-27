@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -80,6 +81,17 @@ def test_login_valid(driver):
         "Login gagal: URL tidak mengandung dashboard"
     )
 
+    # Memverifikasi konten halaman Dashboard
+    dashboard_title = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located(
+            (By.TAG_NAME, "h1")
+        )
+    )
+
+    assert dashboard_title.text == "Login Berhasil!", (
+        "Dashboard gagal dimuat atau judul tidak sesuai"
+    )
+
     # Membuat folder screenshots jika belum tersedia
     screenshot_dir = (
         Path(__file__).resolve().parents[1] / "screenshots"
@@ -94,6 +106,7 @@ def test_login_valid(driver):
         "Screenshot gagal disimpan"
     )
 
+    # Menampilkan informasi hasil pengujian
     print("\n====================================")
     print("HASIL PENGUJIAN AUTOMATION TESTING")
     print("====================================")
