@@ -2,38 +2,39 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs
+from flask import Flask, request, redirect, url_for
 
 
-# ==========================================
+# =====================================
 # KONFIGURASI ENVIRONMENT
-# ==========================================
+# =====================================
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Membaca file .env untuk pengujian lokal
 load_dotenv(BASE_DIR / ".env")
 
-# Mengambil kredensial dari environment
 TEST_USER = os.getenv("TEST_USER")
 TEST_PASS = os.getenv("TEST_PASS")
 
-# Konfigurasi server untuk deployment
-HOST = os.getenv("HOST", "0.0.0.0")
+HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
 
-# Memastikan kredensial tersedia
 if not TEST_USER or not TEST_PASS:
     raise ValueError(
-        "TEST_USER dan TEST_PASS harus diatur "
-        "melalui environment variable."
+        "TEST_USER dan TEST_PASS belum diatur!"
     )
 
 
-# ==========================================
+# =====================================
+# INISIALISASI FLASK
+# =====================================
+
+app = Flask(__name__)
+
+
+# =====================================
 # HALAMAN LOGIN
-# ==========================================
+# =====================================
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -41,6 +42,7 @@ LOGIN_HTML = """
 <head>
     <meta charset="UTF-8">
     <title>Login - Latihan Selenium</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,12 +77,15 @@ LOGIN_HTML = """
         }
     </style>
 </head>
+
 <body>
     <div class="login-box">
+
         <h2>Login Sistem</h2>
         <p>Latihan Automation Testing</p>
 
         <form action="/login" method="POST">
+
             <input
                 type="text"
                 id="username"
@@ -100,16 +105,18 @@ LOGIN_HTML = """
             <button type="submit" id="login-button">
                 Login
             </button>
+
         </form>
+
     </div>
 </body>
 </html>
 """
 
 
-# ==========================================
+# =====================================
 # HALAMAN DASHBOARD
-# ==========================================
+# =====================================
 
 DASHBOARD_HTML = """
 <!DOCTYPE html>
@@ -118,105 +125,71 @@ DASHBOARD_HTML = """
     <meta charset="UTF-8">
     <title>Dashboard</title>
 </head>
+
 <body>
     <h1>Login Berhasil!</h1>
+
     <p>Selamat datang di halaman Dashboard.</p>
+
     <p>Pengujian Selenium dapat dilakukan pada halaman ini.</p>
 </body>
 </html>
 """
 
 
-# ==========================================
-# SERVER APLIKASI
-# ==========================================
+# =====================================
+# ROUTE HALAMAN LOGIN
+# =====================================
 
-class LoginHandler(BaseHTTPRequestHandler):
+@app.route("/")
+@app.route("/login", methods=["GET", "POST"])
+def login():
 
-    def send_html(self, html, status=200):
-        self.send_response(status)
-        self.send_header(
-            "Content-Type",
-            "text/html; charset=utf-8"
+    if request.method == "POST":
+
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+
+        if username == TEST_USER and password == TEST_PASS:
+
+            return redirect(
+                url_for("dashboard"),
+                code=303
+            )
+
+        return (
+            """
+            <h2>Login Gagal!</h2>
+            <p>Username atau password salah.</p>
+            <a href="/login">Kembali ke Login</a>
+            """,
+            401
         )
-        self.end_headers()
-        self.wfile.write(html.encode("utf-8"))
 
-    # Menangani permintaan GET
-    def do_GET(self):
-
-        if self.path in ["/", "/login"]:
-            self.send_html(LOGIN_HTML)
-
-        elif self.path == "/dashboard":
-            self.send_html(DASHBOARD_HTML)
-
-        else:
-            self.send_error(
-                404,
-                "Halaman tidak ditemukan"
-            )
-
-    # Menangani proses login
-    def do_POST(self):
-
-        if self.path == "/login":
-
-            length = int(
-                self.headers.get("Content-Length", 0)
-            )
-
-            data = self.rfile.read(length).decode("utf-8")
-            form = parse_qs(data)
-
-            username = form.get("username", [""])[0]
-            password = form.get("password", [""])[0]
-
-            # Memeriksa kredensial dari environment
-            if (
-                username == TEST_USER
-                and password == TEST_PASS
-            ):
-
-                self.send_response(303)
-                self.send_header(
-                    "Location",
-                    "/dashboard"
-                )
-                self.end_headers()
-
-            else:
-
-                self.send_html(
-                    "<h2>Login Gagal!</h2>"
-                    "<p>Username atau password salah.</p>"
-                    '<a href="/login">Kembali ke Login</a>',
-                    status=401
-                )
-
-        else:
-            self.send_error(
-                404,
-                "Halaman tidak ditemukan"
-            )
+    return LOGIN_HTML
 
 
-# ==========================================
-# MENJALANKAN SERVER
-# ==========================================
+# =====================================
+# ROUTE HALAMAN DASHBOARD
+# =====================================
+
+@app.route("/dashboard")
+def dashboard():
+
+    return DASHBOARD_HTML
+
+
+# =====================================
+# MENJALANKAN APLIKASI LOKAL
+# =====================================
 
 if __name__ == "__main__":
 
-    server = HTTPServer(
-        (HOST, PORT),
-        LoginHandler
-    )
+    print("Aplikasi Flask berhasil dijalankan!")
+    print(f"URL: http://{HOST}:{PORT}/login")
 
-    print("Server berhasil dijalankan!")
-    print(f"Host : {HOST}")
-    print(f"Port : {PORT}")
-    print(
-        f"Login lokal: http://127.0.0.1:{PORT}/login"
+    app.run(
+        host=HOST,
+        port=PORT,
+        debug=False
     )
-
-    server.serve_forever()
