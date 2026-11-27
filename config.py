@@ -5,16 +5,14 @@ from dotenv import load_dotenv
 # Menentukan lokasi folder proyek
 BASE_DIR = Path(__file__).resolve().parent
 
-# Membaca file .env
+# Membaca konfigurasi dari file .env
 load_dotenv(BASE_DIR / ".env")
 
-# Memeriksa variabel yang wajib tersedia
+# Memeriksa variabel wajib
 required_vars = [
     "BASE_URL",
     "TEST_USER",
-    "TEST_PASS",
-    "BROWSER",
-    "HEADLESS"
+    "TEST_PASS"
 ]
 
 missing_vars = [
@@ -27,13 +25,21 @@ if missing_vars:
         f"Variabel environment belum diisi: {missing_vars}"
     )
 
-# Mengambil nilai konfigurasi
-BASE_URL = os.getenv("BASE_URL")
+# Mengambil konfigurasi environment
+BASE_URL = os.getenv("BASE_URL").rstrip("/")
 TEST_USER = os.getenv("TEST_USER")
 TEST_PASS = os.getenv("TEST_PASS")
-BROWSER = os.getenv("BROWSER").lower()
 
-# Mengubah string menjadi Boolean
-HEADLESS = os.getenv("HEADLESS").lower() in (
-    "true", "1", "yes", "on"
-)
+# Mengatur browser
+BROWSER = os.getenv("BROWSER", "chrome").lower()
+
+if BROWSER not in ["chrome", "edge", "firefox"]:
+    raise ValueError("Browser tidak didukung!")
+
+# Mengatur mode headless
+HEADLESS_VALUE = os.getenv("HEADLESS", "true").lower()
+
+if HEADLESS_VALUE not in ["true", "false"]:
+    raise ValueError("HEADLESS harus true atau false!")
+
+HEADLESS = HEADLESS_VALUE == "true"
